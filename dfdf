@@ -1,0 +1,29 @@
+<INSERTING_INTO_CDN_SUMMARY>
+
+INSERT INTO hca_cdn_cost_usage_summary_month
+(cost_date,cdn_country_seq,infra_type_seq,account_seq,service_seq,product_seq,invoice_date,resource_cost,resource_usage)
+
+(
+    SELECT concat(date_format(A.cost_date,'%Y-%m'),'-01'), C.cdn_country_seq, A.infra_type_seq. A.account_seq, A.service_seq, A.product_seq, A.invoice_date, sum(resource_cost) resource_cost, sum(resource_usage) resource_usage
+    
+    FROM (
+    SELECT A.cost_data, 
+        CASE 
+        	WHEN C.cdn_country_seq IS NULL THEN 'Unknown'
+        	ELSE A.cdn_vender_country 
+        END cdn_vendor_country, 
+        A.infra_type_seq, A.account_seq, A.service_seq, A.product_seq, A.invoice_date, A.resource_cost,A.resource_usage
+        
+    FROM 
+        hca_cdn_cost_usage_summary_month_raw A
+        LEFT JOIN hca_cdn_vendor_country_info C 
+        ON 
+        A.cdn_vendor_country=C.cdn_vendor_country AND 
+        C.del_yn='n' AND C.infra_type_seq=2
+        
+     GROUP BY A.cost_date, C.cdn_country_seq, A.infra_type_seq, A.account_seq, A.service_seq, A.product_seq,A.invoice_date
+    )
+    
+    ON DUPLICATE KEY UPDATE 
+    	hca_cdn_cost_usage_summary_month.resource_cost = IFNULL(hca_cdn_cost_usage_summary_month.resource_cost,0)+VALUES(resource_cost), hca_cdn_cost_usage_summary_month.resource_usage =  IFNULL(hca_cdn_cost_usage_summary_month.resource_usage,0)+VALUES(resource_usage);
+ 
